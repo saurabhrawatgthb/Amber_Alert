@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  amber-ai:
+    build: 
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: amber-alert-ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data/cameras:/app/data/cameras
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

@@ -1,0 +1,29 @@
+[
+  {
+    "camera_id": "cam_1",
+    "video_path": "data/cameras/cam_1.mp4",
+    "location": { "lat": 28.6100, "lon": 77.2000 },
+    "area_name": "Connaught Place Junction",
+    "fps": 30,
+    "start_time": "2026-04-08T10:00:00",
+    "end_time": "2026-04-08T10:05:00"
+  },
+  {
+    "camera_id": "cam_2",
+    "video_path": "data/cameras/cam_2.mp4",
+    "location": { "lat": 28.6110, "lon": 77.2010 },
+    "area_name": "Janpath Road",
+    "fps": 30,
+    "start_time": "2026-04-08T10:02:00",
+    "end_time": "2026-04-08T10:10:00"
+  },
+  {
+    "camera_id": "cam_3",
+    "video_path": "data/cameras/cam_3.mp4",
+    "location": { "lat": 28.6150, "lon": 77.2050 },
+    "area_name": "Rajiv Chowk Gate 4",
+    "fps": 30,
+    "start_time": "2026-04-08T10:10:00",
+    "end_time": "2026-04-08T10:20:00"
+  }
+]
