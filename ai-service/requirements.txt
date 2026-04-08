@@ -6,6 +6,4 @@ numpy
 scipy
 ultralytics
 insightface
-onnxruntime
-paddlepaddle
-paddleocr
+onnxruntime>=1.16.0,<1.20.0

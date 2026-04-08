@@ -80,6 +80,57 @@ async def scan_video(
         "matches": matches
     })
 
+@app.post("/scan-vehicle")
+async def scan_vehicle(
+    video_path: str = Form(...),
+    fps_to_process: int = Form(1),
+    start_time: str = Form(""),
+    target_plate: str = Form(None)
+):
+    """
+    REAL Processing Pipeline for Vehicles:
+    """
+    if not os.path.exists(video_path):
+        return JSONResponse({"status": "ERROR", "message": f"File not found: {video_path}"}, status_code=404)
+        
+    cap = cv2.VideoCapture(video_path)
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    if video_fps <= 0: video_fps = 30
+    
+    frame_interval = int(video_fps / fps_to_process)
+    if frame_interval <= 0: frame_interval = 1
+    
+    frame_count = 0
+    matches = []
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret: break
+        
+        if frame_count % frame_interval == 0:
+            result_img, match, max_conf = process_frame_for_vehicle(frame, target_plate)
+            
+            if match:
+                time_offset = frame_count / video_fps
+                matches.append({
+                    "status": "MATCH",
+                    "confidence": max_conf,
+                    "time_offset_sec": time_offset,
+                    "frame": encode_image(result_img)
+                })
+                if len(matches) > 3: break 
+
+        frame_count += 1
+        
+    cap.release()
+    
+    return JSONResponse({
+        "status": "SUCCESS",
+        "video": video_path,
+        "total_matches": len(matches),
+        "matches": matches
+    })
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}

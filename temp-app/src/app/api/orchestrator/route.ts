@@ -7,7 +7,11 @@ export async function POST(request: Request) {
     const { lat, lng, timeStr, imageEncodingBase64 } = body;
     
     // 1. Ask our cameras API to filter by spatial/temporal physics
-    const cameraRes = await fetch('http://localhost:3000/api/cameras', {
+    const protocol = request.headers.get("x-forwarded-proto") || "http";
+    const host = request.headers.get("host") || "localhost:3000";
+    const origin = `${protocol}://${host}`;
+
+    const cameraRes = await fetch(`${origin}/api/cameras`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lat, lng, timeStr, speedLimitKmph: 60 })
@@ -38,7 +42,8 @@ export async function POST(request: Request) {
         }
         
         try {
-            const res = await fetch("http://localhost:8000/scan-video", {
+            const AI_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+            const res = await fetch(`${AI_URL}/scan-video`, {
                 method: "POST",
                 body: formData
             });

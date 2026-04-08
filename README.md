@@ -7,7 +7,7 @@ An intelligent, highly resilient Missing Child Tracking System utilizing Distrib
 This system fulfills the **Single Deployed Link** requirement by unifying the Next.js React frontend and the Express-equivalent API backend into a single serverless application capable of natively running on Vercel.
 
 1.  **Frontend & Main API Server:** The directory `temp-app` is actually the **Root System**. It contains the entire UI (React, Tailwind, Framer Motion) and the main API routes (`/api/auth/login`, `/api/complaints`, `/api/cameras`). When deployed to Vercel, this yields a *single link* that serves both frontend and backend APIs immediately.
-2.  **AI Microservice:** The directory `ai-service` contains the heavy-duty Python ML models (YOLO). This operates independently as a FastAPI service to avoid blocking the Node.js event loop and to maintain manageable Vercel build sizes. It exposes REST endpoints like `/scan` that the Next.js API can talk to internally.
+2.  **AI Microservice:** The directory `ai-service` contains the heavy-duty Python ML models (YOLO). This operates independently as a FastAPI service to avoid blocking the Node.js event loop and to maintain manageable Vercel build sizes. It exposes REST endpoints like `/scan-video` and `/scan-vehicle` that the Next.js API can talk to internally.
 
 ---
 
@@ -22,6 +22,8 @@ npm run dev
 ```
 Wait a few seconds, then open **http://localhost:3000** in your browser. 
 -> The entire UI and the Node.js backend APIs are now running on this single link!
+
+*(Note: The Next.js app expects the AI service to run on `http://localhost:8000` by default. You can override it by setting the `AI_SERVICE_URL` environment variable).*
 
 ### 2. Start the REAL AI Engine (Docker Container)
 Open a separate terminal and run:

@@ -118,14 +118,11 @@ def process_frame_for_person(img, target_face_encoding=None, target_reid_encodin
     
     return img, match, max_conf
 
-try:
-    from paddleocr import PaddleOCR
-    ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
-    HAS_OCR = True
-except ImportError:
-    HAS_OCR = False
-
 def process_frame_for_vehicle(img, target_plate=None):
+    """
+    Vehicle detection via YOLO. OCR-based plate reading has been removed
+    to reduce image size and build complexity.
+    """
     detected = False
     confidence = 0.0
     
@@ -133,19 +130,10 @@ def process_frame_for_vehicle(img, target_plate=None):
     for r in results:
         for box in r.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
+            conf = float(box.conf[0])
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 255, 0), 2)
-            
-            if HAS_OCR:
-                crop = img[y1:y2, x1:x2]
-                if crop.size > 0:
-                    ocr_res = ocr.ocr(crop, cls=True)
-                    if ocr_res and len(ocr_res) > 0 and ocr_res[0]:
-                        for line in ocr_res[0]:
-                            text, conf = line[1][0], line[1][1]
-                            cv2.putText(img, text, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
-                            if target_plate and target_plate.lower() in text.lower():
-                                detected = True
-                                confidence = max(confidence, float(conf))
-                                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
+            cv2.putText(img, f"Vehicle {conf:.2f}", (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+            detected = True
+            confidence = max(confidence, conf)
 
     return img, detected, confidence

@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,8 +8,9 @@ import { Activity, ShieldAlert, Video, Map as MapIcon, Route, Play, Car, User, L
 // Dynamically import Leaflet Map to avoid SSR errors
 const MapComponent = dynamic(() => import("../../../components/MapComponent"), { ssr: false });
 
-export default function TrackingPage({ params }: { params: { id: string } }) {
-  const [cameras, setCameras] = useState<any[]>([]); 
+export default function TrackingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
+  const [cameras, setCameras] = useState<any[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
   const [activeCamera, setActiveCamera] = useState<any>(null);
   const [mode, setMode] = useState<"person" | "vehicle">("person");
@@ -92,7 +94,7 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
             <h1 className="text-xl font-extrabold font-mono tracking-tighter text-white flex items-center gap-3">
               <span className="bg-gradient-to-r from-red-500 to-rose-400 bg-clip-text text-transparent">ALERT.SYS</span>
               <span className="text-slate-600 font-normal">|</span>
-              <span className="text-slate-400 text-sm bg-slate-900 border border-slate-800 px-2 rounded-md tracking-widest">{params.id}</span>
+              <span className="text-slate-400 text-sm bg-slate-900 border border-slate-800 px-2 rounded-md tracking-widest">{id}</span>
             </h1>
           </div>
         </div>

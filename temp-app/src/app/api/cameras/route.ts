@@ -25,14 +25,49 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { lat, lng, timeStr, speedLimitKmph = 60 } = body;
     
-    // Parse Real Metadata
-    const metadataPath = path.join(process.cwd(), '..', 'data', 'cameras', 'camera_metadata.json');
+    // Parse Real Metadata - Try multiple paths to support Vercel and Local
+    let metadataPath = path.join(process.cwd(), '..', 'data', 'cameras', 'camera_metadata.json');
     if (!fs.existsSync(metadataPath)) {
-        return NextResponse.json({ success: false, message: "No real camera metadata found" }, { status: 404 });
+        metadataPath = path.join(process.cwd(), 'data', 'cameras', 'camera_metadata.json');
     }
     
-    const camerasRaw = fs.readFileSync(metadataPath, 'utf8');
-    const cameras = JSON.parse(camerasRaw);
+    let cameras = [];
+    if (!fs.existsSync(metadataPath)) {
+        // Fallback for Vercel if data dir is lost
+        console.warn("No real camera metadata found, using inline fallback");
+        cameras = [
+          {
+            "camera_id": "cam_1",
+            "video_path": "data/cameras/cam_1.mp4",
+            "location": { "lat": 28.6100, "lon": 77.2000 },
+            "area_name": "Connaught Place Junction",
+            "fps": 30,
+            "start_time": "2026-04-08T10:00:00",
+            "end_time": "2026-04-08T10:05:00"
+          },
+          {
+            "camera_id": "cam_2",
+            "video_path": "data/cameras/cam_2.mp4",
+            "location": { "lat": 28.6110, "lon": 77.2010 },
+            "area_name": "Janpath Road",
+            "fps": 30,
+            "start_time": "2026-04-08T10:02:00",
+            "end_time": "2026-04-08T10:10:00"
+          },
+          {
+            "camera_id": "cam_3",
+            "video_path": "data/cameras/cam_3.mp4",
+            "location": { "lat": 28.6150, "lon": 77.2050 },
+            "area_name": "Rajiv Chowk Gate 4",
+            "fps": 30,
+            "start_time": "2026-04-08T10:10:00",
+            "end_time": "2026-04-08T10:20:00"
+          }
+        ];
+    } else {
+        const camerasRaw = fs.readFileSync(metadataPath, 'utf8');
+        cameras = JSON.parse(camerasRaw);
+    }
     
     const userTime = new Date(timeStr || "2026-04-08T10:00:00").getTime();
     const feasibleCameras = [];

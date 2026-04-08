@@ -9,14 +9,38 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [childName, setChildName] = useState("");
 
+  const [file, setFile] = useState<File | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append("childName", childName);
+      // Hardcode location for hackathon parsing simulation, or send string
+      formData.append("location", JSON.stringify({ lat: 28.6100, lng: 77.2000 }));
+      if (file) {
+        formData.append("image", file);
+      }
+
+      const res = await fetch("/api/complaints", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (data.success && data.id) {
+        router.push(`/tracking/${data.id}`);
+      } else {
+        console.error("Failed to submit", data);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
       setLoading(false);
-      router.push(`/tracking/${Date.now()}`);
-    }, 1500);
+    }
   };
 
   return (
@@ -130,11 +154,21 @@ export default function Dashboard() {
                   <h2 className="text-lg font-bold mb-1 flex items-center gap-2 text-white"><FileImage size={18} className="text-indigo-400"/> Primary Identity</h2>
                   <p className="text-slate-400 text-xs mb-4">High clarity photo for InsightFace embedding generation.</p>
                   
-                  <div className="h-40 border hover:border-indigo-500/50 border-dashed border-slate-700/80 bg-slate-950/50 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer group-hover:bg-indigo-500/5">
+                  <div 
+                    className="h-40 border hover:border-indigo-500/50 border-dashed border-slate-700/80 bg-slate-950/50 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer group-hover:bg-indigo-500/5 relative"
+                  >
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
                     <div className="p-3 bg-slate-800 rounded-full mb-3 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300">
                       <Upload className="text-indigo-400" size={24} />
                     </div>
-                    <span className="text-slate-300 text-sm font-medium">Inject Face Data</span>
+                    <span className="text-slate-300 text-sm font-medium">
+                      {file ? file.name : "Inject Face Data"}
+                    </span>
                   </div>
                 </motion.div>
 
@@ -211,12 +245,7 @@ export default function Dashboard() {
         </form>
       </main>
 
-      <style jsx global>{`
-        @keyframes scan {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100%); }
-        }
-      `}</style>
+
     </div>
   );
 }

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const newComplaint = {
       id,
       childName,
-      location: locationStr ? JSON.parse(locationStr as str) : { lat: 40.7128, lng: -74.0060 },
+      location: locationStr ? JSON.parse(locationStr as string) : { lat: 40.7128, lng: -74.0060 },
       status: 'Active',
       createdAt: new Date().toISOString()
     };

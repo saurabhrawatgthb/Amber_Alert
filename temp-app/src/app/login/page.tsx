@@ -9,14 +9,36 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    // Mock login simulating API delay
-    setTimeout(() => {
+    setError("");
+
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        // Successful login
+        router.push("/dashboard");
+      } else {
+        // Display error from API
+        setError(data.message || "Invalid credentials provided.");
+        setLoading(false);
+      }
+    } catch (err) {
+      setError("Failed to connect to authentication server.");
       setLoading(false);
-      router.push("/dashboard");
-    }, 1500);
+    }
   };
 
   return (
@@ -88,8 +110,9 @@ export default function LoginPage() {
               </div>
               <input 
                 type="text" 
+                name="username"
                 required 
-                defaultValue="4091-ALPHA" 
+                defaultValue="police" 
                 className="w-full bg-slate-950/50 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all font-mono text-sm placeholder:text-slate-600 shadow-inner" 
               />
             </div>
@@ -107,6 +130,7 @@ export default function LoginPage() {
               </div>
               <input 
                 type="password" 
+                name="password"
                 required 
                 defaultValue="admin123" 
                 className="w-full bg-slate-950/50 border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-sm placeholder:text-slate-600 shadow-inner" 
