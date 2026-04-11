@@ -2,117 +2,78 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-// Haversine formula
-function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  var R = 6371; // Radius of the earth in km
-  var dLat = deg2rad(lat2-lat1);
-  var dLon = deg2rad(lon2-lon1); 
-  var a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-    Math.sin(dLon/2) * Math.sin(dLon/2); 
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-  var d = R * c; // Distance in km
-  return d;
-}
-
-function deg2rad(deg: number) {
-  return deg * (Math.PI/180)
-}
-
-export async function POST(request: Request) {
+/**
+ * GET /api/cameras
+ * 
+ * Returns the full camera network graph and metadata for frontend visualization.
+ * Called on page load to immediately render all 15 nodes in "pending" state
+ * before any tracking begins.
+ * 
+ * Response:
+ * {
+ *   graph:    { "1": [2, 3], "3": [1, 4, 5], ... }   ← unweighted adjacency list
+ *   cameras:  [{ camera_id, label, timestamp_set }, ...] ← 15 cameras
+ * }
+ */
+export async function GET() {
   try {
-    const body = await request.json();
-    const { lat, lng, timeStr, speedLimitKmph = 60 } = body;
-    
-    // Parse Real Metadata - Try multiple paths to support Vercel and Local
-    let metadataPath = path.join(process.cwd(), '..', 'data', 'cameras', 'camera_metadata.json');
-    if (!fs.existsSync(metadataPath)) {
-        metadataPath = path.join(process.cwd(), 'data', 'cameras', 'camera_metadata.json');
-    }
-    
-    let cameras = [];
-    if (!fs.existsSync(metadataPath)) {
-        // Fallback for Vercel if data dir is lost
-        console.warn("No real camera metadata found, using inline fallback");
-        cameras = [
-          {
-            "camera_id": "cam_1",
-            "video_path": "data/cameras/cam_1.mp4",
-            "location": { "lat": 28.6100, "lon": 77.2000 },
-            "area_name": "Connaught Place Junction",
-            "fps": 30,
-            "start_time": "2026-04-08T10:00:00",
-            "end_time": "2026-04-08T10:05:00"
-          },
-          {
-            "camera_id": "cam_2",
-            "video_path": "data/cameras/cam_2.mp4",
-            "location": { "lat": 28.6110, "lon": 77.2010 },
-            "area_name": "Janpath Road",
-            "fps": 30,
-            "start_time": "2026-04-08T10:02:00",
-            "end_time": "2026-04-08T10:10:00"
-          },
-          {
-            "camera_id": "cam_3",
-            "video_path": "data/cameras/cam_3.mp4",
-            "location": { "lat": 28.6150, "lon": 77.2050 },
-            "area_name": "Rajiv Chowk Gate 4",
-            "fps": 30,
-            "start_time": "2026-04-08T10:10:00",
-            "end_time": "2026-04-08T10:20:00"
-          }
-        ];
+    const dataRoot    = path.join(process.cwd(), '..', 'data', 'cameras');
+    const graphPath   = path.join(dataRoot, 'camera_graph.json');
+    const metaPath    = path.join(dataRoot, 'camera_metadata.json');
+
+    // ── Load graph ──────────────────────────────────────────────
+    let graph: Record<string, number[]> = {};
+    if (fs.existsSync(graphPath)) {
+      const raw = JSON.parse(fs.readFileSync(graphPath, 'utf8'));
+      delete raw['_comment'];
+      // Normalise values to number arrays
+      for (const [k, v] of Object.entries(raw)) {
+        graph[k] = (v as any[]).map(Number);
+      }
     } else {
-        const camerasRaw = fs.readFileSync(metadataPath, 'utf8');
-        cameras = JSON.parse(camerasRaw);
+      // Fallback: built-in 15-node graph (matches specification exactly)
+      graph = {
+        "1":  [2, 3],  "2":  [1],          "3":  [1, 4, 5],
+        "4":  [3, 6],  "5":  [3, 6],       "6":  [4, 5, 7],
+        "7":  [6, 8, 9], "8": [7],          "9":  [7, 10, 11],
+        "10": [9],     "11": [9, 12, 13],   "12": [11],
+        "13": [11, 14, 15], "14": [13],     "15": [13],
+      };
     }
-    
-    const userTime = new Date(timeStr || "2026-04-08T10:00:00").getTime();
-    const feasibleCameras = [];
-    
-    for (const cam of cameras) {
-        const distKm = getDistanceFromLatLonInKm(lat, lng, cam.location.lat, cam.location.lon);
-        const camStartTime = new Date(cam.start_time).getTime();
-        
-        // Time diff in hours
-        const timeDiffHours = (camStartTime - userTime) / (1000 * 60 * 60);
-        
-        let feasible = false;
-        if (timeDiffHours > 0) {
-           const requiredSpeed = distKm / timeDiffHours;
-           if (requiredSpeed <= speedLimitKmph) {
-               feasible = true;
-           }
-        } else if (distKm < 0.5) {
-           feasible = true; // Close enough to just be in the area
-        }
-        
-        if (feasible) {
-           // Append physical distance and expected time to the camera data
-           feasibleCameras.push({
-               ...cam,
-               distance: distKm.toFixed(2),
-               status: 'analyzing', // Ready for AI scan
-               label: cam.area_name,
-               lat: cam.location.lat,
-               lng: cam.location.lon,
-               id: cam.camera_id
-           });
-        }
+
+    // ── Load camera metadata ─────────────────────────────────────
+    let cameras: any[] = [];
+    if (fs.existsSync(metaPath)) {
+      const raw: any[] = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+      cameras = raw.map(c => ({
+        id:            String(c.camera_id),
+        label:         c.label || `Camera ${c.camera_id}`,
+        timestamp_set: c.video_start_timestamp !== 'USER_DEFINED' && !!c.video_start_timestamp,
+        fps:           c.fps || 30,
+      }));
+    } else {
+      // Fallback: generate 15 camera stubs
+      cameras = Array.from({ length: 15 }, (_, i) => ({
+        id:            String(i + 1),
+        label:         `Camera ${i + 1}`,
+        timestamp_set: false,
+        fps:           30,
+      }));
     }
-    
-    // Sort by distance (Smart Selection strategy)
-    feasibleCameras.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-    
-    return NextResponse.json({ 
-        success: true, 
-        message: "Smart Camera Selection applied using Spatio-Temporal constraints.",
-        cameras: feasibleCameras 
+
+    return NextResponse.json({
+      success:    true,
+      graph,
+      cameras,
+      node_count: Object.keys(graph).length,
+      edge_count: Object.values(graph).reduce((s, v) => s + v.length, 0),
     });
-    
-  } catch(err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+
+  } catch (err: any) {
+    console.error('[CAMERAS] Error loading camera network:', err);
+    return NextResponse.json(
+      { success: false, message: err.message },
+      { status: 500 }
+    );
   }
 }

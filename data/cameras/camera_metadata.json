@@ -1,29 +1,122 @@
 [
   {
-    "camera_id": "cam_1",
-    "video_path": "data/cameras/cam_1.mp4",
-    "location": { "lat": 28.6100, "lon": 77.2000 },
-    "area_name": "Connaught Place Junction",
+    "camera_id": 1,
+    "label": "Camera 1",
+    "video_path": "data/cameras/1.mp4",
+    "video_start_timestamp": "USER_DEFINED",
     "fps": 30,
-    "start_time": "2026-04-08T10:00:00",
-    "end_time": "2026-04-08T10:05:00"
+    "duration_seconds": 120
   },
   {
-    "camera_id": "cam_2",
-    "video_path": "data/cameras/cam_2.mp4",
-    "location": { "lat": 28.6110, "lon": 77.2010 },
-    "area_name": "Janpath Road",
+    "camera_id": 2,
+    "label": "Camera 2",
+    "video_path": "data/cameras/2.mp4",
+    "video_start_timestamp": "USER_DEFINED",
     "fps": 30,
-    "start_time": "2026-04-08T10:02:00",
-    "end_time": "2026-04-08T10:10:00"
+    "duration_seconds": 120
   },
   {
-    "camera_id": "cam_3",
-    "video_path": "data/cameras/cam_3.mp4",
-    "location": { "lat": 28.6150, "lon": 77.2050 },
-    "area_name": "Rajiv Chowk Gate 4",
+    "camera_id": 3,
+    "label": "Camera 3",
+    "video_path": "data/cameras/3.mp4",
+    "video_start_timestamp": "USER_DEFINED",
     "fps": 30,
-    "start_time": "2026-04-08T10:10:00",
-    "end_time": "2026-04-08T10:20:00"
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 4,
+    "label": "Camera 4",
+    "video_path": "data/cameras/4.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 5,
+    "label": "Camera 5",
+    "video_path": "data/cameras/5.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 6,
+    "label": "Camera 6",
+    "video_path": "data/cameras/6.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 7,
+    "label": "Camera 7",
+    "video_path": "data/cameras/7.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 8,
+    "label": "Camera 8",
+    "video_path": "data/cameras/8.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 9,
+    "label": "Camera 9",
+    "video_path": "data/cameras/9.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 10,
+    "label": "Camera 10",
+    "video_path": "data/cameras/10.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 11,
+    "label": "Camera 11",
+    "video_path": "data/cameras/11.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 12,
+    "label": "Camera 12",
+    "video_path": "data/cameras/12.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 13,
+    "label": "Camera 13",
+    "video_path": "data/cameras/13.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 14,
+    "label": "Camera 14",
+    "video_path": "data/cameras/14.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
+  },
+  {
+    "camera_id": 15,
+    "label": "Camera 15",
+    "video_path": "data/cameras/15.mp4",
+    "video_start_timestamp": "USER_DEFINED",
+    "fps": 30,
+    "duration_seconds": 120
   }
 ]

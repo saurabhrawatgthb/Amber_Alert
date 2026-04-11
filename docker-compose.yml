@@ -1,13 +1,21 @@
 services:
   amber-ai:
-    build: 
+    build:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: amber-alert-ai
     ports:
       - "8000:8000"
     volumes:
+      # Mount camera videos and metadata into container
       - ./data/cameras:/app/data/cameras
     environment:
       - PYTHONUNBUFFERED=1
+      - DATA_ROOT=/app/data/cameras
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

@@ -1,90 +1,257 @@
 "use client";
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import { useEffect, useRef } from "react";
 
-// Create custom tactical icons
-const createTacticalIcon = (isMatch: boolean) => {
-  return L.divIcon({
-    className: "bg-transparent border-0",
-    html: `
-      <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-        ${isMatch 
-          ? `<div style="position: absolute; inset: 0; background-color: rgba(225, 29, 72, 0.4); border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-             <div style="position: relative; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; box-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444; border: 2px solid white;"></div>` 
-          : `<div style="position: absolute; inset: 0; border: 1px solid rgba(59, 130, 246, 0.5); border-radius: 50%;"></div>
-             <div style="position: relative; width: 8px; height: 8px; background-color: #3b82f6; border-radius: 50%; box-shadow: 0 0 8px #3b82f6;"></div>`
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+interface CameraNode {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  status?: "pending" | "scanning" | "matched" | "clear";
+  neighbors?: string[];
+}
+
+interface TrackingHit {
+  camera_id: string;
+  label: string;
+  timestamp: string;
+  confidence: number;
+  lat: number;
+  lng: number;
+}
+
+interface MapComponentProps {
+  cameras?: CameraNode[];
+  trackingPath?: TrackingHit[];
+  onSelectCamera?: (camera: CameraNode) => void;
+}
+
+// ─────────────────────────────────────────────
+// Leaflet Map Component (Client-Only)
+// ─────────────────────────────────────────────
+export default function MapComponent({ cameras = [], trackingPath = [], onSelectCamera }: MapComponentProps) {
+  const mapRef = useRef<any>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<Map<string, any>>(new Map());
+  const polylinesRef = useRef<any[]>([]);
+
+  // ── Initialize Map ──
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (mapInstanceRef.current) return; // Already initialized
+
+    const L = require("leaflet");
+    require("leaflet/dist/leaflet.css");
+
+    // Custom dark tile layer
+    const map = L.map(mapRef.current, {
+      center: [28.6315, 77.2167],  // Connaught Place, Delhi
+      zoom: 14,
+      zoomControl: true,
+      attributionControl: false,
+    });
+
+    // Dark tactical map theme
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20,
+    }).addTo(map);
+
+    mapInstanceRef.current = map;
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // ── Update Camera Markers ──
+  useEffect(() => {
+    const L = require("leaflet");
+    const map = mapInstanceRef.current;
+    if (!map || !L) return;
+
+    // Remove old markers
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current.clear();
+
+    if (cameras.length === 0) return;
+
+    cameras.forEach((cam) => {
+      const isMatched = cam.status === "matched" || trackingPath.some(h => h.camera_id === cam.id);
+      const isScanning = cam.status === "scanning";
+      const hitIdx = trackingPath.findIndex(h => h.camera_id === cam.id);
+      const hit = hitIdx >= 0 ? trackingPath[hitIdx] : null;
+
+      // Custom SVG marker
+      const color = isMatched ? "#ef4444" : isScanning ? "#eab308" : "#64748b";
+      const glow = isMatched ? "drop-shadow(0 0 8px #ef4444)" : "";
+      const size = isMatched ? 36 : 28;
+
+      const svgIcon = L.divIcon({
+        className: "",
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        html: `
+          <div style="
+            width: ${size}px; height: ${size}px;
+            border-radius: 50%;
+            background: ${color}22;
+            border: 2px solid ${color};
+            display: flex; align-items: center; justify-content: center;
+            filter: ${glow};
+            position: relative;
+          ">
+            ${isMatched ? `
+              <div style="
+                position: absolute; inset: -6px;
+                border-radius: 50%;
+                border: 1.5px solid ${color}55;
+                animation: ping 1.5s ease-in-out infinite;
+              "></div>
+            ` : ""}
+            <span style="color: ${color}; font-size: ${isMatched ? 16 : 13}px; line-height: 1;">
+              ${isMatched ? "📍" : "📷"}
+            </span>
+            ${hitIdx >= 0 ? `
+              <div style="
+                position: absolute; top: -8px; right: -8px;
+                background: #ef4444; color: white;
+                border-radius: 50%; width: 16px; height: 16px;
+                font-size: 9px; font-weight: bold; font-family: monospace;
+                display: flex; align-items: center; justify-content: center;
+                border: 1.5px solid #020617;
+              ">${hitIdx + 1}</div>
+            ` : ""}
+          </div>
+        `,
+      });
+
+      const popupContent = hit
+        ? `
+          <div style="font-family: monospace; font-size: 11px; color: #e2e8f0; background: #0f172a; padding: 10px; border-radius: 8px; min-width: 200px; border: 1px solid #ef444440;">
+            <div style="color: #ef4444; font-weight: bold; font-size: 12px; margin-bottom: 6px;">⚠ TARGET DETECTED</div>
+            <div style="color: #94a3b8; margin-bottom: 2px;">${cam.label}</div>
+            <div style="color: #64748b;">${cam.id}</div>
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #1e293b;">
+              <div>🕐 ${new Date(hit.timestamp).toLocaleTimeString()}</div>
+              <div>📊 Confidence: ${(hit.confidence * 100).toFixed(1)}%</div>
+              <div>📍 Step ${hitIdx + 1} of ${trackingPath.length}</div>
+            </div>
+          </div>
+        `
+        : `
+          <div style="font-family: monospace; font-size: 11px; color: #94a3b8; background: #0f172a; padding: 10px; border-radius: 8px; min-width: 160px; border: 1px solid #1e293b;">
+            <div style="color: #e2e8f0; font-weight: bold; margin-bottom: 4px;">${cam.label}</div>
+            <div style="color: #64748b;">${cam.id}</div>
+            <div style="color: #475569; margin-top: 4px;">No detection</div>
+          </div>
+        `;
+
+      const marker = L.marker([cam.lat, cam.lng], { icon: svgIcon })
+        .addTo(map)
+        .bindPopup(popupContent, {
+          className: "dark-popup",
+          maxWidth: 250,
+        });
+
+      marker.on("click", () => {
+        if (onSelectCamera) onSelectCamera(cam);
+      });
+
+      markersRef.current.set(cam.id, marker);
+    });
+
+    // Auto-fit bounds to all cameras
+    if (cameras.length > 1) {
+      const bounds = L.latLngBounds(cameras.map(c => [c.lat, c.lng]));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameras, trackingPath]);
+
+  // ── Draw Tracking Path Polylines ──
+  useEffect(() => {
+    const L = require("leaflet");
+    const map = mapInstanceRef.current;
+    if (!map || !L) return;
+
+    // Remove old polylines
+    polylinesRef.current.forEach(p => map.removeLayer(p));
+    polylinesRef.current = [];
+
+    if (trackingPath.length < 2) return;
+
+    // Draw animated path between matched cameras
+    for (let i = 0; i < trackingPath.length - 1; i++) {
+      const from = trackingPath[i];
+      const to = trackingPath[i + 1];
+
+      // Dashed glow line
+      const polyline = L.polyline(
+        [[from.lat, from.lng], [to.lat, to.lng]],
+        {
+          color: "#ef4444",
+          weight: 2,
+          opacity: 0.7,
+          dashArray: "8 6",
         }
-      </div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
+      ).addTo(map);
 
-export default function MapComponent({ cameras, onSelectCamera }: { cameras: any[], onSelectCamera: (cam: any) => void }) {
-  if (cameras.length === 0) return (
-    <div className="h-full w-full bg-[#020617] flex flex-col items-center justify-center relative overflow-hidden text-slate-400 font-mono text-sm tracking-widest">
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
-      <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(59,130,246,0.3)]"></div>
-      ESTABLISHING GEO-SPATIAL UPLINK...
-    </div>
-  );
+      // Outer glow
+      const glowLine = L.polyline(
+        [[from.lat, from.lng], [to.lat, to.lng]],
+        {
+          color: "#ef4444",
+          weight: 8,
+          opacity: 0.1,
+        }
+      ).addTo(map);
 
-  const center = [cameras[0].lat, cameras[0].lng] as [number, number];
-  
-  // Calculate a fake "path" of matched cameras
-  const matchingCams = cameras.filter(c => c.lastMatch);
-  const pathCoordinates = matchingCams.map(c => [c.lat, c.lng] as [number, number]);
+      polylinesRef.current.push(polyline, glowLine);
+    }
+  }, [trackingPath]);
 
   return (
-    <MapContainer 
-      center={center} 
-      zoom={14} 
-      style={{ height: "100%", width: "100%", background: "#020617" }}
-      zoomControl={false}
-      attributionControl={false}
-    >
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+    <>
+      <style>{`
+        .leaflet-popup-content-wrapper {
+          background: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .leaflet-popup-content {
+          margin: 0 !important;
+        }
+        .leaflet-popup-tip {
+          background: #0f172a !important;
+        }
+        .leaflet-control-zoom {
+          border: 1px solid #1e293b !important;
+          border-radius: 8px !important;
+          overflow: hidden;
+        }
+        .leaflet-control-zoom a {
+          background: #0f172a !important;
+          color: #64748b !important;
+          border-color: #1e293b !important;
+        }
+        .leaflet-control-zoom a:hover {
+          background: #1e293b !important;
+          color: #e2e8f0 !important;
+        }
+        @keyframes ping {
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(2); opacity: 0; }
+        }
+      `}</style>
+      <div
+        ref={mapRef}
+        style={{ width: "100%", height: "100%", background: "#020617" }}
       />
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
-      />
-      
-      {cameras.map((cam, idx) => (
-        <Marker 
-          key={cam.id} 
-          position={[cam.lat, cam.lng]} 
-          icon={createTacticalIcon(cam.lastMatch)}
-          eventHandlers={{
-            click: () => onSelectCamera(cam)
-          }}
-        >
-          <Popup className="tactical-popup">
-            <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 text-slate-300 p-3 rounded-lg shadow-xl font-mono text-xs w-48">
-              <div className="border-b border-slate-700 pb-2 mb-2 flex items-center justify-between">
-                 <b className="text-white tracking-widest bg-slate-950 px-1 py-0.5 rounded">{cam.id}</b>
-                 {cam.lastMatch && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_red]"></span>}
-              </div>
-              <div className="text-slate-400 mb-1 tracking-wide">{cam.label}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                 STATUS: <span className="text-emerald-400">{cam.status.toUpperCase()}</span>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-
-      {pathCoordinates.length > 1 && (
-         <Polyline 
-            positions={pathCoordinates} 
-            color="#ef4444" 
-            weight={3} 
-            dashArray="8, 12" 
-            className="animate-pulse"
-         />
-      )}
-    </MapContainer>
+    </>
   );
 }
