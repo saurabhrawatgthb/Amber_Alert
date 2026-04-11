@@ -1,56 +1,113 @@
-# Amber Alert AI Tracking System
+# Amber Alert AI: Graph-Based Missing Child Tracking System
 
-An intelligent, highly resilient Missing Child Tracking System utilizing Distributed Video Intelligence. This system correlates simulated camera feeds, extracts intelligence via YOLO and ReID mechanisms, and visualizes geographic tracking.
+A professional-grade, intelligent surveillance system that transitions from legacy geolocation models to a modern **Graph-Based Camera Network**. The system uses spatio-temporal video intelligence to track targets across a network of 15 connected CCTV cameras.
 
-## Architecture & Unified Deployment
+## 🚨 Core Architecture: The Camera Graph
 
-This system fulfills the **Single Deployed Link** requirement by unifying the Next.js React frontend and the Express-equivalent API backend into a single serverless application capable of natively running on Vercel.
+The system models the surveillance environment as a mathematical graph:
+- **Nodes:** Each camera (1–15) is a node in the network.
+- **Edges:** Possible movement paths between cameras are defined in an unweighted adjacency list.
+- **Traversal:** The AI uses **Depth-First Search (DFS)** to intelligently predict and scan the next camera in the sequence based on the graph's topology.
 
-1.  **Frontend & Main API Server:** The directory `temp-app` is actually the **Root System**. It contains the entire UI (React, Tailwind, Framer Motion) and the main API routes (`/api/auth/login`, `/api/complaints`, `/api/cameras`). When deployed to Vercel, this yields a *single link* that serves both frontend and backend APIs immediately.
-2.  **AI Microservice:** The directory `ai-service` contains the heavy-duty Python ML models (YOLO). This operates independently as a FastAPI service to avoid blocking the Node.js event loop and to maintain manageable Vercel build sizes. It exposes REST endpoints like `/scan-video` and `/scan-vehicle` that the Next.js API can talk to internally.
+### Camera Network Topology
+The system uses the following fixed adjacency list (defined in `data/cameras/camera_graph.json`):
+```json
+{
+  "1":  [2, 3], "2":  [1], "3":  [1, 4, 5],
+  "4":  [3, 6], "5":  [3, 6], "6":  [4, 5, 7],
+  "7":  [6, 8, 9], "8": [7], "9":  [7, 10, 11],
+  "10": [9], "11": [9, 12, 13], "12": [11],
+  "13": [11, 14, 15], "14": [13], "15": [13]
+}
+```
 
 ---
 
-## 🚀 Running Locally
+## 📁 Data Structure & Storage
 
-### 1. Start the Unified Web Platform (Next.js)
-Open a terminal and run:
+### Camera Footage
+Footage is stored numerically in `/data/cameras/`:
+- `1.mp4`, `2.mp4`, ..., `15.mp4`
+- Filenames correspond directly to Camera/Node IDs.
+
+### Camera Metadata (`camera_metadata.json`)
+The system consumes manually defined timestamps to synchronize video frames with real-world time.
+```json
+{
+  "camera_id": 1,
+  "video_path": "data/cameras/1.mp4",
+  "video_start_timestamp": "2026-04-11T10:00:00",
+  "fps": 30,
+  "duration_seconds": 120
+}
+```
+> [!IMPORTANT]
+> The system requires `video_start_timestamp` to be set. If left as `USER_DEFINED`, that camera will be skipped during traversal.
+
+---
+
+## 🧠 Intelligence Engine
+
+### 👤 Human Tracking Stack
+The AI Service (`ai-service`) utilizes a multi-stage pipeline:
+1.  **Detection:** YOLOv8 (Ultralytics) for person detection.
+2.  **Face Recognition:** InsightFace for deep feature extraction.
+3.  **Body ReID:** OSNet (torchreid) for person re-identification when faces are obscured.
+4.  **Fallback:** MediaPipe and DeepSORT for resilient tracking.
+
+### 🚗 Vehicle Tracking Stack
+1.  **Detection:** YOLOv8 Vehicle Detection.
+2.  **Recognition:** PaddleOCR for high-accuracy license plate extraction.
+
+### 📊 Confidence Calculation
+The composite confidence score is calculated as:
+**`Score = 0.5 * Face_Match + 0.3 * ReID_Match + 0.2 * Temporal_Feasibility`**
+
+### ⏱️ Temporal Validation
+Transitions between Camera A and Camera B are strictly validated:
+- **Regression Check:** If `timestamp_B < timestamp_A`, the detection is rejected.
+- **Feasibility:** Gaps too small or too large significantly reduce the temporal confidence component.
+
+---
+
+## 🎨 Tactical Frontend (React Flow)
+
+The dashboard replaces maps with a **Live Graph Visualization**:
+- **MATCH:** Green Node
+- **SCANNING:** Yellow Node (Animated)
+- **CLEAR:** Grey Node
+- **PATH:** Animated paths showing the target's trajectory (e.g., `1 → 3 → 6 → 7 → 9`).
+
+---
+
+## 🚀 Getting Started
+
+### 1. Requirements
+- Docker & Docker Compose
+- Node.js 18+
+- Python 3.10+ (for local AI development)
+
+### 2. Setup Camera Data
+1. Place your `.mp4` files in `/data/cameras/` named `1.mp4` to `15.mp4`.
+2. Edit `/data/cameras/camera_metadata.json` and set the `video_start_timestamp` for your footage.
+
+### 3. Start the Services
+**Next.js Frontend & API:**
 ```bash
 cd temp-app
 npm install
 npm run dev
 ```
-Wait a few seconds, then open **http://localhost:3000** in your browser. 
--> The entire UI and the Node.js backend APIs are now running on this single link!
 
-*(Note: The Next.js app expects the AI service to run on `http://localhost:8000` by default. You can override it by setting the `AI_SERVICE_URL` environment variable).*
-
-### 2. Start the REAL AI Engine (Docker Container)
-Open a separate terminal and run:
+**AI Service (Docker):**
 ```bash
 docker-compose up --build
 ```
-*(This automatically provisions a heavy Linux environment with all C++ build tools, PyTorch, YOLOv8, OSNet, and InsightFace without corrupting your Windows registry).*
 
 ---
 
-## 🎨 UI Access
-1.  **Login Panel:** Navigate to `http://localhost:3000/login`. Credentials: `police` / `admin123`.
-2.  **Dashboard:** Initiate a tracking sequence by providing child details.
-3.  **Command Center Tracking:** The UI shifts to a Leaflet geospatial map mirroring intelligence logs and tracking path predictions via simulated API events.
-
----
-
-## ☁️ Vercel Deployment Guide
-
-To deploy this as a single unified system onto Vercel:
-
-1. Push this repository to a GitHub repository.
-2. In Vercel, create a new Project and select that GitHub repository.
-3. For the **Root Directory** setting on Vercel, select the `temp-app/` folder.
-4. Keep the framework preset to "Next.js".
-5. Click **Deploy**.
-
-Vercel will build both your Frontend (React pages) and Backend (API Routes like `/api/complaints`) and host them on a single integrated domain.
-
-*(To deploy the Python AI service, use Render, Railway, or HuggingFace Spaces. The URLs from the AI deployment can be added as environment variables in Vercel to allow the Next.js backend to stream frames to the AI engine).*
+## 🛠️ Tech Stack
+- **Frontend:** Next.js, React Flow, Tailwind CSS, Framer Motion.
+- **Backend:** Node.js (Orchestrator), FastAPI (AI Service).
+- **ML/CV:** YOLOv8, InsightFace, PaddleOCR, OSNet, MediaPipe.
+- **Database:** JSON-based persistent storage for camera metadata and graphs.
